@@ -179,6 +179,107 @@ func main() {
 		})
 	})
 
+	// 添加测试端点，用于模拟 EdgeX 消息
+	http.HandleFunc("/api/test-edgex", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Method not allowed"})
+			return
+		}
+
+		// 模拟 EdgeX 消息
+		edgexMsg := EdgeXMessage{
+			CorrelationID: "test-correlation-id",
+			MessageType:   "event",
+			Origin:        time.Now().UnixNano(),
+			Payload: json.RawMessage(`{
+				"id": "test-event-id",
+				"deviceName": "TestDevice-001",
+				"readings": [
+					{
+						"id": "reading-1",
+						"resourceName": "temperature",
+						"value": "25.5",
+						"origin": 1677721600000000000,
+						"deviceName": "TestDevice-001"
+					},
+					{
+						"id": "reading-2",
+						"resourceName": "humidity",
+						"value": "45",
+						"origin": 1677721600000000000,
+						"deviceName": "TestDevice-001"
+					},
+					{
+						"id": "reading-3",
+						"resourceName": "pressure",
+						"value": "1013.25",
+						"origin": 1677721600000000000,
+						"deviceName": "TestDevice-001"
+					}
+				],
+				"origin": 1677721600000000000
+			}`),
+		}
+
+		// 解析 payload 中的事件
+		var event EdgeXEvent
+		if err := json.Unmarshal(edgexMsg.Payload, &event); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+
+		// 收集所有读数，准备批量插入
+		var records []*map[string]any
+
+		// 处理每个读数
+		for _, reading := range event.Readings {
+			// 准备数据
+			metadataStr := ""
+			if reading.Metadata != nil {
+				metadataStr = string(reading.Metadata)
+			}
+
+			// 将字符串值转换为浮点数
+			value := 0.0
+			fmt.Sscanf(reading.Value, "%f", &value)
+
+			data := map[string]any{
+				"id":         reading.ID,
+				"deviceName": event.DeviceName,
+				"reading":    reading.ResourceName,
+				"value":      value,
+				"timestamp":  int(reading.Origin / 1000000000), // 转换为秒，类型为 int
+				"metadata":   metadataStr,
+			}
+
+			records = append(records, &data)
+		}
+
+		// 批量存储到 sfsDb
+		if len(records) > 0 {
+			_, err := table.BatchInsertNoInc(records)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+				return
+			} else {
+				json.NewEncoder(w).Encode(map[string]string{
+					"status":  "success",
+					"message": fmt.Sprintf("Batch stored %d readings from %s", len(records), event.DeviceName),
+				})
+			}
+		} else {
+			json.NewEncoder(w).Encode(map[string]string{
+				"status":  "success",
+				"message": "No readings to store",
+			})
+		}
+	})
+
 	// 在后台启动 HTTP 服务器
 	go func() {
 		log.Println("Starting HTTP server for health checks on port 8081")
@@ -374,6 +475,9 @@ func messageHandler() mqtt.MessageHandler {
 			return
 		}
 
+		// 收集所有读数，准备批量插入
+		var records []*map[string]any
+
 		// 处理每个读数
 		for _, reading := range event.Readings {
 			// 准备数据
@@ -391,17 +495,20 @@ func messageHandler() mqtt.MessageHandler {
 				"deviceName": event.DeviceName,
 				"reading":    reading.ResourceName,
 				"value":      value,
-				"timestamp":  reading.Origin / 1000000000, // 转换为秒
+				"timestamp":  int(reading.Origin / 1000000000), // 转换为秒，类型为 int
 				"metadata":   metadataStr,
 			}
 
-			// 存储到 sfsDb
-			_, err := table.Insert(&data)
+			records = append(records, &data)
+		}
+
+		// 批量存储到 sfsDb
+		if len(records) > 0 {
+			_, err := table.BatchInsertNoInc(records)
 			if err != nil {
-				log.Printf("Failed to store data: %v", err)
+				log.Printf("Failed to batch store data: %v", err)
 			} else {
-				log.Printf("Stored reading from %s: %s = %f",
-					event.DeviceName, reading.ResourceName, value)
+				log.Printf("Batch stored %d readings from %s", len(records), event.DeviceName)
 			}
 		}
 	}
@@ -442,43 +549,23 @@ func queryReadings(tbl *engine.Table, deviceName, startTime, endTime string) ([]
 	endRange := make(map[string]any)
 
 	// 利用组合主键 (deviceName + timestamp) 进行更高效的查询
-	if deviceName != "" {
-		// 设置设备名称
-		startRange["deviceName"] = deviceName
-		endRange["deviceName"] = deviceName
+	// 设置设备名称
+	startRange["deviceName"] = deviceName
+	endRange["deviceName"] = deviceName
 
-		// 设置时间范围
-		if startTimestamp != nil {
-			startRange["timestamp"] = *startTimestamp
-		} else {
-			startRange["timestamp"] = nil // 从最小值开始
-		}
-
-		if endTimestamp != nil {
-			endRange["timestamp"] = *endTimestamp
-		} else {
-			endRange["timestamp"] = nil // 到最大值结束
-		}
+	// 设置时间范围
+	if startTimestamp != nil {
+		startRange["timestamp"] = *startTimestamp
 	} else {
-		// 只按时间范围查询
-		if startTimestamp != nil {
-			startRange["timestamp"] = *startTimestamp
-		} else {
-			startRange["timestamp"] = nil // 从最小值开始
-		}
-
-		if endTimestamp != nil {
-			endRange["timestamp"] = *endTimestamp
-		} else {
-			endRange["timestamp"] = nil // 到最大值结束
-		}
+		startRange["timestamp"] = nil // 从最小值开始
 	}
-	/*
-		// 创建迭代器函数
-		funIter := storage.FunIter(func(start, limit []byte) storage.Iterator {
-			return storage.GetDBManager().GetDB().Iterator(start, limit)
-		})
-	*/
+
+	if endTimestamp != nil {
+		endRange["timestamp"] = *endTimestamp
+	} else {
+		endRange["timestamp"] = nil // 到最大值结束
+	}
+
 	// 执行范围查询
 	iter, err := tbl.SearchRange(nil, &startRange, &endRange)
 	if err != nil {

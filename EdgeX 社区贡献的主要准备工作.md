@@ -9,7 +9,7 @@
 
 **发送 I2P 邮件的步骤**：
 1. 打开邮件客户端，创建新邮件
-2. 收件人：edgex-foundry@lists.edgexfoundry.org
+2. 收件人：edgex-tsc@lists.edgexfoundry.org  
 3. 主题：[Intent-to-Provide] sfsDb Adapter for EdgeX Foundry
 4. 内容：使用 `edgex-adapter/I2P_Email.txt` 文件中的内容，填写你的姓名和组织信息
 5. 发送邮件
