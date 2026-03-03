@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"sfsdb-edgex-adapter/database"
+
 	"github.com/liaoran123/sfsDb/engine"
 	"github.com/liaoran123/sfsDb/storage"
 )
@@ -127,10 +129,11 @@ func TestQueryReadingsWithEdgeXData(t *testing.T) {
 
 	// 测试1: 查询特定设备的所有数据
 	t.Run("QueryAllDeviceData", func(t *testing.T) {
-		readings, err := queryReadings(table, "Thermostat-001", "", "")
+		readings, err := database.QueryRecords(table, "Thermostat-001", "", "")
 		if err != nil {
 			t.Fatalf("查询失败: %v", err)
 		}
+		defer readings.Release()
 
 		t.Logf("查询到 %d 条数据 for Thermostat-001", len(readings))
 		for i, reading := range readings {
@@ -146,10 +149,11 @@ func TestQueryReadingsWithEdgeXData(t *testing.T) {
 
 	// 测试2: 查询不存在的设备
 	t.Run("QueryNonExistentDevice", func(t *testing.T) {
-		readings, err := queryReadings(table, "NonExistentDevice", "", "")
+		readings, err := database.QueryRecords(table, "NonExistentDevice", "", "")
 		if err != nil {
 			t.Fatalf("查询失败: %v", err)
 		}
+		defer readings.Release()
 
 		t.Logf("查询不存在设备得到 %d 条数据", len(readings))
 		for i, reading := range readings {

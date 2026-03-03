@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"sfsdb-edgex-adapter/config"
+	"sfsdb-edgex-adapter/database"
 )
 
 // TestInvalidMessageFormat 测试无效的消息格式
@@ -23,7 +24,7 @@ func TestInvalidMessageFormat(t *testing.T) {
 	}
 
 	// 初始化数据库
-	if err := initDatabase(); err != nil {
+	if err := database.Init(appConfig.DBPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
 
@@ -53,7 +54,7 @@ func TestInvalidPayloadFormat(t *testing.T) {
 	}
 
 	// 初始化数据库
-	if err := initDatabase(); err != nil {
+	if err := database.Init(appConfig.DBPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
 
@@ -94,7 +95,7 @@ func TestEmptyReadings(t *testing.T) {
 	}
 
 	// 初始化数据库
-	if err := initDatabase(); err != nil {
+	if err := database.Init(appConfig.DBPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
 
@@ -145,7 +146,7 @@ func TestInvalidValueFormat(t *testing.T) {
 	}
 
 	// 初始化数据库
-	if err := initDatabase(); err != nil {
+	if err := database.Init(appConfig.DBPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
 

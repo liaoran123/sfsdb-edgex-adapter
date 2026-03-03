@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sfsdb-edgex-adapter/database"
 	"testing"
 	"time"
 
@@ -81,10 +82,11 @@ func TestQueryReadings(t *testing.T) {
 
 	// 测试1: 查询特定设备的所有数据
 	t.Run("QueryAllDeviceData", func(t *testing.T) {
-		readings, err := queryReadings(table, deviceName, "", "")
+		readings, err := database.QueryRecords(table, deviceName, "", "")
 		if err != nil {
 			t.Fatalf("查询失败: %v", err)
 		}
+		defer readings.Release()
 
 		if len(readings) != 5 {
 			t.Errorf("期望5条记录，实际得到%d条", len(readings))
@@ -96,10 +98,11 @@ func TestQueryReadings(t *testing.T) {
 		startTime := now.Add(1 * time.Minute).Format(time.RFC3339)
 		endTime := now.Add(3 * time.Minute).Format(time.RFC3339)
 
-		readings, err := queryReadings(table, deviceName, startTime, endTime)
+		readings, err := database.QueryRecords(table, deviceName, startTime, endTime)
 		if err != nil {
 			t.Fatalf("查询失败: %v", err)
 		}
+		defer readings.Release()
 
 		if len(readings) != 3 {
 			t.Errorf("期望3条记录，实际得到%d条", len(readings))

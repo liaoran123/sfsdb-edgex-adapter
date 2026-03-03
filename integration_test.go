@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"sfsdb-edgex-adapter/config"
+	"sfsdb-edgex-adapter/database"
 )
 
 // TestMQTTIntegration 测试与 MQTT 消息总线的集成
@@ -24,7 +25,7 @@ func TestMQTTIntegration(t *testing.T) {
 	}
 
 	// 初始化数据库
-	if err := initDatabase(); err != nil {
+	if err := database.Init(appConfig.DBPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
 
@@ -89,7 +90,7 @@ func TestDataFlow(t *testing.T) {
 	}
 
 	// 初始化数据库
-	if err := initDatabase(); err != nil {
+	if err := database.Init(appConfig.DBPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
 
@@ -147,7 +148,7 @@ func TestDataFlow(t *testing.T) {
 		}
 
 		// 存储到 sfsDb
-		_, err := table.Insert(&data)
+		_, err := database.Table.Insert(&data)
 		if err != nil {
 			t.Fatalf("Failed to store data: %v", err)
 		}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sfsdb-edgex-adapter/config"
+	"sfsdb-edgex-adapter/database"
 	"testing"
 	"time"
 )
@@ -23,7 +24,7 @@ func TestPerformance(t *testing.T) {
 	}
 
 	// 初始化数据库
-	if err := initDatabase(); err != nil {
+	if err := database.Init(appConfig.DBPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
 
@@ -89,7 +90,7 @@ func TestPerformance(t *testing.T) {
 			}
 
 			// 存储到 sfsDb
-			_, err := table.Insert(&data)
+			_, err := database.Table.Insert(&data)
 			if err != nil {
 				t.Fatalf("Failed to store data: %v", err)
 			}
@@ -124,7 +125,7 @@ func TestMemoryUsage(t *testing.T) {
 	}
 
 	// 初始化数据库
-	if err := initDatabase(); err != nil {
+	if err := database.Init(appConfig.DBPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
 
@@ -187,7 +188,7 @@ func TestMemoryUsage(t *testing.T) {
 			}
 
 			// 存储到 sfsDb
-			_, err := table.Insert(&data)
+			_, err := database.Table.Insert(&data)
 			if err != nil {
 				t.Fatalf("Failed to store data: %v", err)
 			}

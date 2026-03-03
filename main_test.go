@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"sfsdb-edgex-adapter/config"
+	"sfsdb-edgex-adapter/database"
 )
 
 // TestHealthCheck 测试健康检查接口
@@ -113,7 +114,7 @@ func TestDatabaseInitialization(t *testing.T) {
 	}
 
 	// 初始化数据库
-	if err := initDatabase(); err != nil {
+	if err := database.Init(appConfig.DBPath); err != nil {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
 

@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+/*
+要与实际 EdgeX 系统通信，需要配置：
+- MQTT broker 地址（ EDGEX_MQTT_BROKER 环境变量）
+- 订阅主题（ EDGEX_MQTT_TOPIC 环境变量）
+- 客户端 ID（ EDGEX_CLIENT_ID 环境变量）
+*/
 // Config 配置结构体
 type Config struct {
 	DBPath     string `json:"db_path" env:"EDGEX_DB_PATH"`
