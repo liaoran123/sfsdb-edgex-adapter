@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"sfsdb-edgex-adapter/backup"
+	"sfsdb-edgex-adapter/common"
 	"sfsdb-edgex-adapter/config"
 	"sfsdb-edgex-adapter/database"
 
@@ -38,9 +39,11 @@ type EdgeXReading struct {
 	ID           string          `json:"id"`
 	ResourceName string          `json:"resourceName"`
 	Value        string          `json:"value"`
+	ValueType    string          `json:"valueType,omitempty"`
 	Origin       int64           `json:"origin"`
 	ProfileName  string          `json:"profileName,omitempty"`
 	DeviceName   string          `json:"deviceName,omitempty"`
+	BaseType     string          `json:"baseType,omitempty"`
 	Metadata     json.RawMessage `json:"metadata,omitempty"`
 }
 
@@ -218,24 +221,30 @@ func (s *Server) handleTestEdgeX(w http.ResponseWriter, r *http.Request) {
 			"readings": [
 				{
 					"id": "reading-1",
-					"resourceName": "temperature",
-					"value": "25.5",
-					"origin": 1677721600000000000,
-					"deviceName": "TestDevice-001"
+			"resourceName": "temperature",
+			"value": "25.5",
+			"valueType": "Float32",
+			"baseType": "Float",
+			"origin": 1677721600000000000,
+			"deviceName": "TestDevice-001"
 				},
 				{
 					"id": "reading-2",
-					"resourceName": "humidity",
-					"value": "45",
-					"origin": 1677721600000000000,
-					"deviceName": "TestDevice-001"
+			"resourceName": "humidity",
+			"value": "45",
+			"valueType": "Int32",
+			"baseType": "Int",
+			"origin": 1677721600000000000,
+			"deviceName": "TestDevice-001"
 				},
 				{
 					"id": "reading-3",
-					"resourceName": "pressure",
-					"value": "1013.25",
-					"origin": 1677721600000000000,
-					"deviceName": "TestDevice-001"
+			"resourceName": "pressure",
+			"value": "1013.25",
+			"valueType": "Float64",
+			"baseType": "Float",
+			"origin": 1677721600000000000,
+			"deviceName": "TestDevice-001"
 				}
 			],
 			"origin": 1677721600000000000
@@ -261,16 +270,17 @@ func (s *Server) handleTestEdgeX(w http.ResponseWriter, r *http.Request) {
 			metadataStr = string(reading.Metadata)
 		}
 
-		// 将字符串值转换为浮点数
-		value := 0.0
-		fmt.Sscanf(reading.Value, "%f", &value)
+		// 解析值的类型
+		value := common.ParseValue(reading.Value)
 
 		data := map[string]any{
 			"id":         reading.ID,
 			"deviceName": event.DeviceName,
 			"reading":    reading.ResourceName,
 			"value":      value,
-			"timestamp":  int(reading.Origin / 1000000000), // 转换为秒，类型为int
+			"valueType":  reading.ValueType,
+			"baseType":   reading.BaseType,
+			"timestamp":  reading.Origin, // 纳秒级时间戳，类型为 int64
 			"metadata":   metadataStr,
 		}
 
