@@ -34,4 +34,6 @@ build/
 
 # Environment variables
 .env
+
+# Word documents
 word/
